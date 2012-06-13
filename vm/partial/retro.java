@@ -14,7 +14,7 @@ public class retro {
   public static final int VM_NOP = 0;       public static final int VM_LIT = 1;       public static final int VM_DUP = 2;
   public static final int VM_DROP = 3;      public static final int VM_SWAP = 4;      public static final int VM_PUSH = 5;
   public static final int VM_POP = 6;       public static final int VM_LOOP = 7;      public static final int VM_JUMP = 8;
-  public static final int VM_RETURN = 9;    public static final int VM_GT_JUMP = 10;  public static final int VM_LT_JUMP = 11;
+  public static final int VM_RETURN = 9;    public static final int VM_LT_JUMP = 10;  public static final int VM_GT_JUMP = 11;
   public static final int VM_NE_JUMP = 12;  public static final int VM_EQ_JUMP = 13;  public static final int VM_FETCH = 14;
   public static final int VM_STORE = 15;    public static final int VM_ADD = 16;      public static final int VM_SUB = 17;
   public static final int VM_MUL = 18;      public static final int VM_DIVMOD = 19;   public static final int VM_AND = 20;
@@ -313,13 +313,13 @@ public class retro {
       if (memory[ip + 1] == 0)
         ip++;
       break;
-    case VM_GT_JUMP:
+    case VM_LT_JUMP:
       ip++;
       if (data[sp-1] > data[sp])
         ip = memory[ip] - 1;
       sp = sp - 2;
       break;
-    case VM_LT_JUMP:
+    case VM_GT_JUMP:
       ip++;
       if (data[sp-1] < data[sp])
         ip = memory[ip] - 1;
