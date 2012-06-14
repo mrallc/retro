@@ -3,20 +3,42 @@
  * Based on the C# implementation
  */
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.IOException;
 import java.io.RandomAccessFile;
 
 import com.xoba.util.ILogger;
 import com.xoba.util.LogFactory;
+import com.xoba.util.MraUtils;
 
 public class Retro {
 
 	private static final ILogger logger = LogFactory.getDefault().create();
 
-	private int sp, rsp, ip;
+	private int sp, rsp, ip, fp;
 	private final int ports[] = new int[12];
+	private final byte[] file;
 
 	private final int data[], address[], memory[];
+
+	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
+		data = new int[dataStackSize];
+		address = new int[addressStackSize];
+		memory = new int[memorySize];
+		if (f == null) {
+			file = new byte[0];
+		} else {
+			ByteArrayOutputStream out = new ByteArrayOutputStream();
+			try {
+				MraUtils.copy(f, out);
+			} finally {
+				out.close();
+			}
+			file = out.toByteArray();
+			logger.debugf("loaded %,d input bytes", file.length);
+		}
+	}
 
 	public static final int VM_NOP = 0;
 	public static final int VM_LIT = 1;
@@ -109,12 +131,6 @@ public class Retro {
 		}
 	}
 
-	public Retro(int dataStackSize, int addressStackSize, int memorySize) {
-		data = new int[dataStackSize];
-		address = new int[addressStackSize];
-		memory = new int[memorySize];
-	}
-
 	private static interface IMemory {
 
 		public int get(int pc);
@@ -132,13 +148,17 @@ public class Retro {
 		}
 
 		if (ports[0] == 0 && ports[1] == 1) {
-			final byte[] b = { 0, 0, 0 };
-			try {
-				System.in.read(b, 0, 1);
-			} catch (Exception e) {
-				System.out.println(e);
+			if (fp < file.length) {
+				ports[1] = file[fp++];
+			} else {
+				final byte[] b = { 0, 0, 0 };
+				try {
+					System.in.read(b, 0, 1);
+				} catch (Exception e) {
+					System.out.println(e);
+				}
+				ports[1] = b[0];
 			}
-			ports[1] = b[0];
 			ports[0] = 1;
 		}
 
@@ -488,9 +508,9 @@ public class Retro {
 	/**
 	 * The main entry point. What else needs to be said?
 	 */
-	public static void main(String[] args) {
+	public static void main(String[] args) throws Exception {
 		final int n = 1000000;
-		Retro vm = new Retro(128, 1024, n);
+		Retro vm = new Retro(128, 1024, n, new File("test/core.rx"));
 		if (false) {
 			vm.store(new int[] { VM_LIT, 101 }, 0);
 		} else {
