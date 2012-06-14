@@ -3,6 +3,7 @@ package com.xoba.retro;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 
 import com.xoba.util.ILogger;
@@ -18,14 +19,16 @@ public class Retro {
 
 	private final IMemory ports = new Memory(12);
 
-	private final IStack data, address;
+	private final IStack<Integer> data, address;
 
 	private int fp;
 	private final byte[] file;
 
+	private final IInputManager im = new SimpleManager();
+
 	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
-		this.data = new Stack(dataStackSize);
-		this.address = new Stack(addressStackSize);
+		this.data = BaseStack.createIntegerStack(dataStackSize);
+		this.address = BaseStack.createIntegerStack(addressStackSize);
 		this.memory = new Memory(memorySize);
 		if (f == null) {
 			file = new byte[0];
@@ -131,6 +134,36 @@ public class Retro {
 		}
 	}
 
+	public static interface IInputManager {
+
+		public void push(String name);
+
+		public int read() throws IOException;
+	}
+
+	private static class SimpleManager implements IInputManager {
+
+		private final java.util.Stack<InputStream> stack = new java.util.Stack<InputStream>();
+
+		public SimpleManager() {
+			stack.push(System.in);
+		}
+
+		@Override
+		public void push(String name) {
+			File f = new File(name);
+
+		}
+
+		@Override
+		public int read() throws IOException {
+			final byte[] b = { 0, 0, 0 };
+			System.in.read(b, 0, 1);
+			return b[0];
+		}
+
+	}
+
 	public void handleDevices() {
 
 		if (ports.get(0) == 1) {
@@ -143,7 +176,7 @@ public class Retro {
 			} else {
 				final byte[] b = { 0, 0, 0 };
 				try {
-					System.in.read(b, 0, 1);
+					b[0] = (byte) im.read();
 				} catch (Exception e) {
 					System.out.println(e);
 				}
@@ -167,20 +200,17 @@ public class Retro {
 		switch (ports.get(4)) {
 
 		case 0: {
-
 			break;
 		}
 
 		case 1: {
 			saveImage("retroImage");
-			ports.set(4, 0);
 			ports.set(0, 1);
 			break;
 		}
 
 		case 2: {
 			int name = data.pop();
-			logger.warnf("unhandled file ???");
 			StringBuffer buf = new StringBuffer();
 			int i = 0;
 			boolean done = false;
@@ -193,8 +223,7 @@ public class Retro {
 					i++;
 				}
 			}
-			File f = new File(buf.toString());
-			logger.debugf("%s exists: %s", f.getAbsoluteFile(), f.exists());
+			im.push(buf.toString());
 			break;
 		}
 
@@ -536,7 +565,7 @@ public class Retro {
 
 		System.setErr(System.out);
 
-		Retro vm = new Retro(128, 1024, 1000000, false ? null : new File("test/core.rx"));
+		Retro vm = new Retro(128, 1024, 1000000, false ? null : new File("test/vocabs.rx"));
 
 		vm.initialize();
 
