@@ -115,6 +115,16 @@ public class Retro {
 		memory = new int[memorySize];
 	}
 
+	private static interface IMemory {
+
+		public int get(int pc);
+
+		public void set(int pc, int value);
+
+		public void set(int pc, int[] buffer);
+
+	}
+
 	public void handleDevices() {
 
 		if (ports[0] == 1) {
