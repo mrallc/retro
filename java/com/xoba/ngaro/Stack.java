@@ -13,22 +13,22 @@ public class Stack implements IStack {
 
 	@Override
 	public void push(int v) {
-		data[++sp] = v;
+		data[sp++] = v;
 	}
 
 	@Override
 	public int pop() {
-		return data[sp--];
+		return data[--sp];
 	}
 
 	@Override
 	public int peek() {
-		return data[sp];
+		return data[sp - 1];
 	}
 
 	@Override
 	public int peek2() {
-		return data[sp - 1];
+		return data[sp - 2];
 	}
 
 	@Override
