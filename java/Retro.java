@@ -22,7 +22,7 @@ public class Retro {
 
 	private final int address[];
 	private final IMemory memory;
-	private final Stack stack;
+	private final IStack stack;
 
 	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
 		this.stack = new Stack(dataStackSize);
@@ -133,6 +133,8 @@ public class Retro {
 
 	private static interface IStack {
 
+		public int getSP();
+
 		public int pop();
 
 		public void drop(int i);
@@ -217,13 +219,13 @@ public class Retro {
 		}
 
 		if (ports[2] == 1) {
-			char c = (char) stack.data[stack.sp];
-			if (stack.data[stack.sp] < 0) {
+			int x = stack.pop();
+			char c = (char) x;
+			if (x < 0) {
 				for (c = 0; c < 300; c++)
 					System.out.println("\n");
 			} else
 				System.out.print(c);
-			stack.sp--;
 			ports[2] = 0;
 			ports[0] = 1;
 		}
@@ -253,7 +255,7 @@ public class Retro {
 			ports[0] = 1;
 			break;
 		case -5:
-			ports[5] = stack.sp;
+			ports[5] = stack.getSP();
 			ports[0] = 1;
 			break;
 		case -6:
@@ -329,6 +331,11 @@ public class Retro {
 		@Override
 		public void drop(int i) {
 			sp -= i;
+		}
+
+		@Override
+		public int getSP() {
+			return sp;
 		}
 
 	}
@@ -417,31 +424,28 @@ public class Retro {
 
 		case VM_GT_JUMP: {
 			ip++;
-			if (stack.peek2() < stack.peek())
+			if (stack.pop() > stack.pop())
 				ip = memory.get(ip) - 1;
-			stack.drop(2);
 			break;
 		}
 
 		case VM_NE_JUMP: {
 			ip++;
-			if (stack.peek2() != stack.peek())
+			if (stack.pop() != stack.pop())
 				ip = memory.get(ip) - 1;
-			stack.drop(2);
 			break;
 		}
 
 		case VM_EQ_JUMP: {
 			ip++;
-			if (stack.data[stack.sp - 1] == stack.data[stack.sp])
+			if (stack.pop() == stack.pop())
 				ip = memory.get(ip) - 1;
-			stack.drop(2);
 			break;
 		}
 
 		case VM_FETCH: {
-			int x = stack.data[stack.sp];
-			stack.data[stack.sp] = memory.get(x);
+			int x = stack.pop();
+			stack.push(memory.get(x));
 			break;
 		}
 
@@ -542,8 +546,9 @@ public class Retro {
 
 		case VM_OUT: {
 			ports[0] = 0;
-			ports[stack.data[stack.sp]] = stack.data[stack.sp - 1];
-			stack.sp = stack.sp - 2;
+			int x = stack.pop();
+			int y = stack.pop();
+			ports[x] = y;
 			break;
 		}
 
@@ -567,15 +572,6 @@ public class Retro {
 
 	private void store(int[] stuff, int pc) {
 		System.arraycopy(stuff, 0, memory, pc, stuff.length);
-	}
-
-	private void dump() {
-		for (int i = 0; i < 10; i++) {
-			logger.debugf("mem[%2d] = %d", i, memory.get(i));
-		}
-		for (int i = 0; i < stack.sp + 3; i++) {
-			logger.debugf("data[%2d] = %d", i, stack.data[i]);
-		}
 	}
 
 	/**
