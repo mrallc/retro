@@ -2,16 +2,16 @@ package com.xoba.retro;
 
 public interface IStack {
 
-	public int getSP();
+	public int peek();
 
 	public int pop();
 
+	public void push(int v);
+
+	public int getSP();
+
 	public void drop(int i);
 
-	public int peek();
-
 	public int peek2();
-
-	public void push(int v);
 
 }

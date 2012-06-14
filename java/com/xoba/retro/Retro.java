@@ -1,4 +1,5 @@
 package com.xoba.retro;
+
 /*
  * Copyright (c) 2009 - 2011, Simon Waite and Charles Childers
  * Based on the C# implementation
@@ -17,17 +18,16 @@ public class Retro {
 
 	private static final ILogger logger = LogFactory.getDefault().create();
 
-	private int rsp, ip, fp;
+	private int ip, fp;
 	private final int ports[] = new int[12];
 	private final byte[] file;
 
-	private final int address[];
 	private final IMemory memory;
-	private final IStack stack;
+	private final IStack data, address;
 
 	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
-		this.stack = new Stack(dataStackSize);
-		address = new int[addressStackSize];
+		this.data = new Stack(dataStackSize);
+		address = new Stack(addressStackSize);
 		memory = new Memory(memorySize);
 		if (f == null) {
 			file = new byte[0];
@@ -154,7 +154,7 @@ public class Retro {
 		}
 
 		if (ports[2] == 1) {
-			int x = stack.pop();
+			int x = data.pop();
 			char c = (char) x;
 			if (x < 0) {
 				for (c = 0; c < 300; c++)
@@ -190,11 +190,11 @@ public class Retro {
 			ports[0] = 1;
 			break;
 		case -5:
-			ports[5] = stack.getSP();
+			ports[5] = data.getSP();
 			ports[0] = 1;
 			break;
 		case -6:
-			ports[5] = rsp;
+			ports[5] = address.getSP();
 			ports[0] = 1;
 			break;
 		case -7:
@@ -246,45 +246,45 @@ public class Retro {
 		}
 
 		case VM_LIT: {
-			stack.push(memory.get(++ip));
+			data.push(memory.get(++ip));
 			break;
 		}
 
 		case VM_DUP: {
-			stack.push(stack.peek());
+			data.push(data.peek());
 			break;
 		}
 
 		case VM_DROP: {
-			stack.pop();
+			data.pop();
 			break;
 		}
 
 		case VM_SWAP: {
-			int x = stack.pop();
-			int y = stack.pop();
-			stack.push(x);
-			stack.push(y);
+			int x = data.pop();
+			int y = data.pop();
+			data.push(x);
+			data.push(y);
 			break;
 		}
 
 		case VM_PUSH: {
-			address[++rsp] = stack.pop();
+			address.push(data.pop());
 			break;
 		}
 
 		case VM_POP: {
-			stack.push(address[rsp--]);
+			data.push(address.pop());
 			break;
 		}
 
 		case VM_LOOP: {
-			stack.push(stack.pop() - 1);
+			data.push(data.pop() - 1);
 			ip++;
-			if (stack.peek() != 0 && stack.peek() > -1)
+			if (data.peek() != 0 && data.peek() > -1)
 				ip = memory.get(ip) - 1;
 			else
-				stack.drop(1);
+				data.drop(1);
 			break;
 		}
 
@@ -299,8 +299,7 @@ public class Retro {
 		}
 
 		case VM_RETURN: {
-			ip = address[rsp];
-			rsp--;
+			ip = address.pop();
 			if (memory.get(ip + 1) == 0)
 				ip++;
 			if (memory.get(ip + 1) == 0)
@@ -310,137 +309,136 @@ public class Retro {
 
 		case VM_LT_JUMP: {
 			ip++;
-			if (stack.pop() < stack.pop())
+			if (data.pop() < data.pop())
 				ip = memory.get(ip) - 1;
 			break;
 		}
 
 		case VM_GT_JUMP: {
 			ip++;
-			if (stack.pop() > stack.pop())
+			if (data.pop() > data.pop())
 				ip = memory.get(ip) - 1;
 			break;
 		}
 
 		case VM_NE_JUMP: {
 			ip++;
-			if (stack.pop() != stack.pop())
+			if (data.pop() != data.pop())
 				ip = memory.get(ip) - 1;
 			break;
 		}
 
 		case VM_EQ_JUMP: {
 			ip++;
-			if (stack.pop() == stack.pop())
+			if (data.pop() == data.pop())
 				ip = memory.get(ip) - 1;
 			break;
 		}
 
 		case VM_FETCH: {
-			int x = stack.pop();
-			stack.push(memory.get(x));
+			int x = data.pop();
+			data.push(memory.get(x));
 			break;
 		}
 
 		case VM_STORE: {
-			memory.set(stack.pop(), stack.pop());
+			memory.set(data.pop(), data.pop());
 			break;
 		}
 
 		case VM_ADD: {
-			int y = stack.pop();
-			int x = stack.pop();
-			stack.push(x + y);
+			int y = data.pop();
+			int x = data.pop();
+			data.push(x + y);
 			break;
 		}
 
 		case VM_SUB: {
-			int y = stack.pop();
-			int x = stack.pop();
-			stack.push(x - y);
+			int y = data.pop();
+			int x = data.pop();
+			data.push(x - y);
 			break;
 		}
 
 		case VM_MUL: {
-			int y = stack.pop();
-			int x = stack.pop();
-			stack.push(x * y);
+			int y = data.pop();
+			int x = data.pop();
+			data.push(x * y);
 			break;
 		}
 
 		case VM_DIVMOD: {
-			final int x = stack.pop();
-			final int y = stack.pop();
-			stack.push(y % x);
-			stack.push(y / x);
+			final int x = data.pop();
+			final int y = data.pop();
+			data.push(y % x);
+			data.push(y / x);
 			break;
 		}
 
 		case VM_AND: {
-			int y = stack.pop();
-			int x = stack.pop();
-			stack.push(x & y);
+			int y = data.pop();
+			int x = data.pop();
+			data.push(x & y);
 			break;
 		}
 
 		case VM_OR: {
-			int y = stack.pop();
-			int x = stack.pop();
-			stack.push(x | y);
+			int y = data.pop();
+			int x = data.pop();
+			data.push(x | y);
 			break;
 		}
 
 		case VM_XOR: {
-			int y = stack.pop();
-			int x = stack.pop();
-			stack.push(x ^ y);
+			int y = data.pop();
+			int x = data.pop();
+			data.push(x ^ y);
 			break;
 		}
 
 		case VM_SHL: {
-			int y = stack.pop();
-			int x = stack.pop();
-			stack.push(x << y);
+			int y = data.pop();
+			int x = data.pop();
+			data.push(x << y);
 			break;
 		}
 
 		case VM_SHR: {
-			int y = stack.pop();
-			int x = stack.pop();
-			stack.push(x >>= y);
+			int y = data.pop();
+			int x = data.pop();
+			data.push(x >>= y);
 			break;
 		}
 
 		case VM_ZERO_EXIT: {
-			if (stack.peek() == 0) {
-				stack.drop(1);
-				ip = address[rsp];
-				rsp--;
+			if (data.peek() == 0) {
+				data.drop(1);
+				ip = address.pop();
 			}
 			break;
 		}
 
 		case VM_INC: {
-			stack.push(stack.pop() + 1);
+			data.push(data.pop() + 1);
 			break;
 		}
 
 		case VM_DEC: {
-			stack.push(stack.pop() - 1);
+			data.push(data.pop() - 1);
 			break;
 		}
 
 		case VM_IN: {
-			final int x = stack.pop();
-			stack.push(ports[x]);
+			final int x = data.pop();
+			data.push(ports[x]);
 			ports[x] = 0;
 			break;
 		}
 
 		case VM_OUT: {
 			ports[0] = 0;
-			int x = stack.pop();
-			int y = stack.pop();
+			int x = data.pop();
+			int y = data.pop();
 			ports[x] = y;
 			break;
 		}
@@ -451,8 +449,7 @@ public class Retro {
 		}
 
 		default: {
-			rsp++;
-			address[rsp] = ip;
+			address.push(ip);
 			ip = memory.get(ip) - 1;
 			if (memory.get(ip + 1) == 0)
 				ip++;
@@ -467,21 +464,27 @@ public class Retro {
 		System.arraycopy(stuff, 0, memory, pc, stuff.length);
 	}
 
+	public void run() {
+		for (ip = 0; ip < memory.size(); ip++) {
+			process();
+		}
+
+	}
+
 	/**
 	 * The main entry point. What else needs to be said?
 	 */
 	public static void main(String[] args) throws Exception {
-		final int n = 1000000;
-		Retro vm = new Retro(128, 1024, n, new File("test/core.rx"));
+
+		Retro vm = new Retro(128, 1024, 1000000, new File("test/core.rx"));
+
 		if (false) {
 			vm.store(new int[] { VM_LIT, 101 }, 0);
 		} else {
 			vm.initialize();
 		}
 
-		for (vm.ip = 0; vm.ip < n; vm.ip++) {
-			vm.process();
-		}
+		vm.run();
 
 		// vm.dump();
 
