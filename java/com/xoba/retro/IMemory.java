@@ -1,3 +1,4 @@
+package com.xoba.retro;
 
 public interface IMemory {
 
