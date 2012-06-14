@@ -6,7 +6,12 @@
 import java.io.File;
 import java.io.RandomAccessFile;
 
+import com.xoba.util.ILogger;
+import com.xoba.util.LogFactory;
+
 public class Retro {
+
+	private static final ILogger logger = LogFactory.getDefault().create();
 
 	private int sp, rsp, ip;
 	private final int ports[] = new int[12];
@@ -58,20 +63,16 @@ public class Retro {
 		return b1 << 24 | b2 << 16 | b3 << 8 | b4;
 	}
 
-	/**
-	 * Load an image file. Will do nothing if the file does not exist.
-	 */
 	public void loadImage(String name) {
 		memory[0] = 0;
 		File f = new File(name);
 		if (f.exists()) {
 			try {
-				RandomAccessFile in = new RandomAccessFile(name, "r");
+				RandomAccessFile in = new RandomAccessFile(f, "r");
+				long n = in.length() / 4;
 				try {
-					int i = 0;
-					while (i < (in.length() / 4)) {
+					for (int i = 0; i < n; i++) {
 						memory[i] = switchEndian(in.readInt());
-						i++;
 					}
 				} finally {
 					in.close();
@@ -82,39 +83,26 @@ public class Retro {
 		}
 	}
 
-	/**
-	 * Save the current image to a file.
-	 */
 	public void saveImage(String name) {
-		int i;
-
 		try {
 			RandomAccessFile out = new RandomAccessFile(name, "rw");
-			i = 0;
-
-			while (i < memory.length) {
-				out.writeInt(switchEndian(memory[i]));
-				i++;
-			}
-			if (out != null)
+			try {
+				for (int i = 0; i < memory.length; i++) {
+					out.writeInt(switchEndian(memory[i]));
+				}
+			} finally {
 				out.close();
+			}
 		} catch (Exception e) {
-			System.out.println(e);
+			e.printStackTrace();
 		}
 	}
 
-	/**
-	 * Attempt to load the initial image. This tries to load a file
-	 * (retroImage). If that fails, it uses a built-in one.
-	 */
-	public void initial_image() {
-
+	public void initialize() {
 		for (int i = 0; i < memory.length; i++) {
 			memory[i] = 0;
 		}
-
 		loadImage("retroImage");
-
 		if (memory[0] == 0) {
 			System.out.println("Could not find image file!");
 			System.exit(-1);
@@ -125,20 +113,16 @@ public class Retro {
 		data = new int[dataStackSize];
 		address = new int[addressStackSize];
 		memory = new int[memorySize];
-		initial_image();
 	}
 
-	/**
-	 * Handler for the emulated hardware devices
-	 */
 	public void handleDevices() {
-		final byte[] b = { 0, 0, 0 };
-		char c = ' ';
 
-		if (ports[0] == 1)
+		if (ports[0] == 1) {
 			return;
+		}
 
 		if (ports[0] == 0 && ports[1] == 1) {
+			final byte[] b = { 0, 0, 0 };
 			try {
 				System.in.read(b, 0, 1);
 			} catch (Exception e) {
@@ -147,8 +131,9 @@ public class Retro {
 			ports[1] = b[0];
 			ports[0] = 1;
 		}
+
 		if (ports[2] == 1) {
-			c = (char) data[sp];
+			char c = (char) data[sp];
 			if (data[sp] < 0) {
 				for (c = 0; c < 300; c++)
 					System.out.println("\n");
@@ -158,14 +143,15 @@ public class Retro {
 			ports[2] = 0;
 			ports[0] = 1;
 		}
+
 		if (ports[4] == 1) {
 			saveImage("retroImage");
 			ports[4] = 0;
 			ports[0] = 1;
 		}
 
-		/* Capabilities */
 		switch (ports[5]) {
+
 		case -1:
 			ports[5] = memory.length;
 			ports[0] = 1;
@@ -476,14 +462,36 @@ public class Retro {
 		}
 	}
 
+	private void store(int[] stuff, int pc) {
+		System.arraycopy(stuff, 0, memory, pc, stuff.length);
+	}
+
+	private void dump() {
+		for (int i = 0; i < 10; i++) {
+			logger.debugf("mem[%2d] = %d", i, memory[i]);
+		}
+		for (int i = 0; i < sp + 3; i++) {
+			logger.debugf("data[%2d] = %d", i, data[i]);
+		}
+	}
+
 	/**
 	 * The main entry point. What else needs to be said?
 	 */
 	public static void main(String[] args) {
 		final int n = 1000000;
 		Retro vm = new Retro(128, 1024, n);
+		if (false) {
+			vm.store(new int[] { VM_LIT, 101 }, 0);
+		} else {
+			vm.initialize();
+		}
+
 		for (vm.ip = 0; vm.ip < n; vm.ip++) {
 			vm.process();
 		}
+
+		vm.dump();
+
 	}
 }
