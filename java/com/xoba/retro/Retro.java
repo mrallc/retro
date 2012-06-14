@@ -1,14 +1,13 @@
 package com.xoba.retro;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.RandomAccessFile;
 
 import com.xoba.util.ILogger;
 import com.xoba.util.LogFactory;
-import com.xoba.util.MraUtils;
 
 public class Retro {
 
@@ -19,28 +18,16 @@ public class Retro {
 
 	private final IMemory ports = new Memory(12);
 
-	private final IStack<Integer> data, address;
+	private final IStack data, address;
 
-	private int fp;
-	private final byte[] file;
-
-	private final IInputManager im = new SimpleManager();
+	private final IInputManager im = new InputManager();
 
 	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
-		this.data = BaseStack.createIntegerStack(dataStackSize);
-		this.address = BaseStack.createIntegerStack(addressStackSize);
+		this.data = new Stack(dataStackSize);
+		this.address = new Stack(addressStackSize);
 		this.memory = new Memory(memorySize);
-		if (f == null) {
-			file = new byte[0];
-		} else {
-			ByteArrayOutputStream out = new ByteArrayOutputStream();
-			try {
-				MraUtils.copy(f, out);
-			} finally {
-				out.close();
-			}
-			file = out.toByteArray();
-			logger.debugf("loaded %,d input bytes", file.length);
+		if (f != null) {
+			im.push(f.getAbsolutePath());
 		}
 	}
 
@@ -136,30 +123,41 @@ public class Retro {
 
 	public static interface IInputManager {
 
-		public void push(String name);
+		public void push(String name) throws IOException;
 
 		public int read() throws IOException;
 	}
 
-	private static class SimpleManager implements IInputManager {
+	private static class InputManager implements IInputManager {
 
 		private final java.util.Stack<InputStream> stack = new java.util.Stack<InputStream>();
 
-		public SimpleManager() {
+		public InputManager() {
 			stack.push(System.in);
 		}
 
 		@Override
-		public void push(String name) {
+		public void push(String name) throws IOException {
 			File f = new File(name);
-
+			logger.debugf("finding %s", f);
+			stack.push(new FileInputStream(f));
 		}
 
 		@Override
 		public int read() throws IOException {
-			final byte[] b = { 0, 0, 0 };
-			System.in.read(b, 0, 1);
-			return b[0];
+			int b = 0;
+			boolean done = false;
+			while (!done) {
+				InputStream in = stack.peek();
+				b = in.read();
+				if (b >= 0) {
+					done = true;
+				} else {
+					in.close();
+					stack.pop();
+				}
+			}
+			return b;
 		}
 
 	}
@@ -171,17 +169,13 @@ public class Retro {
 		}
 
 		if (ports.get(0) == 0 && ports.get(1) == 1) {
-			if (fp < file.length) {
-				ports.set(1, file[fp++]);
-			} else {
-				final byte[] b = { 0, 0, 0 };
-				try {
-					b[0] = (byte) im.read();
-				} catch (Exception e) {
-					System.out.println(e);
-				}
-				ports.set(1, b[0]);
+			final byte[] b = { 0, 0, 0 };
+			try {
+				b[0] = (byte) im.read();
+			} catch (Exception e) {
+				System.out.println(e);
 			}
+			ports.set(1, b[0]);
 			ports.set(0, 1);
 		}
 
@@ -223,7 +217,11 @@ public class Retro {
 					i++;
 				}
 			}
-			im.push(buf.toString());
+			try {
+				im.push(buf.toString());
+			} catch (Exception e) {
+				throw new RuntimeException(e);
+			}
 			break;
 		}
 
@@ -562,14 +560,9 @@ public class Retro {
 	 * The main entry point. What else needs to be said?
 	 */
 	public static void main(String[] args) throws Exception {
-
 		System.setErr(System.out);
-
-		Retro vm = new Retro(128, 1024, 1000000, false ? null : new File("test/vocabs.rx"));
-
+		Retro vm = new Retro(128, 1024, 1000000, false ? null : new File("test/core.rx"));
 		vm.initialize();
-
 		vm.run();
-
 	}
 }
