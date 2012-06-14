@@ -7,7 +7,7 @@ public class Memory implements IMemory {
 
 	public Memory(int n) {
 		this.n = n;
-		this.memory = new int[n];
+		this.memory = new int[this.n];
 	}
 
 	@Override
@@ -17,7 +17,11 @@ public class Memory implements IMemory {
 
 	@Override
 	public void set(int pc, int value) {
-		memory[pc] = value;
+		if (false && pc >= n) {
+			System.out.printf("accessing %,d\n", pc);
+		} else {
+			memory[pc] = value;
+		}
 	}
 
 	@Override

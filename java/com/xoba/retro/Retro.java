@@ -164,11 +164,87 @@ public class Retro {
 			ports.set(0, 1);
 		}
 
-		if (ports.get(4) == 1) {
+		switch (ports.get(4)) {
+
+		case 0: {
+
+			break;
+		}
+
+		case 1: {
 			saveImage("retroImage");
 			ports.set(4, 0);
 			ports.set(0, 1);
+			break;
 		}
+
+		case 2: {
+			int name = data.pop();
+			logger.warnf("unhandled file ???");
+			StringBuffer buf = new StringBuffer();
+			int i = 0;
+			boolean done = false;
+			while (!done) {
+				int j = memory.get(name + i);
+				if (j == 0) {
+					done = true;
+				} else {
+					buf.append((char) j);
+					i++;
+				}
+			}
+			File f = new File(buf.toString());
+			logger.debugf("%s exists: %s", f.getAbsoluteFile(), f.exists());
+			break;
+		}
+
+		case -1: {
+			logger.warnf("unhandled file open");
+			break;
+		}
+
+		case -2: {
+			logger.warnf("unhandled file read");
+			break;
+		}
+
+		case -3: {
+			logger.warnf("unhandled file write");
+			break;
+		}
+
+		case -4: {
+			logger.warnf("unhandled file close");
+			break;
+		}
+
+		case -5: {
+			logger.warnf("unhandled file current location");
+			break;
+		}
+
+		case -6: {
+			logger.warnf("unhandled file seek");
+			break;
+		}
+
+		case -7: {
+			logger.warnf("unhandled file size");
+			break;
+		}
+
+		case -8: {
+			logger.warnf("unhandled file delete");
+			break;
+		}
+
+		default: {
+			logger.warnf("unhandled file %,d", ports.get(4));
+			break;
+		}
+		}
+
+		ports.set(4, 0);
 
 		switch (ports.get(5)) {
 
@@ -443,18 +519,14 @@ public class Retro {
 				ip++;
 			break;
 		}
-		}
-	}
 
-	private void store(int[] stuff, int pc) {
-		System.arraycopy(stuff, 0, memory, pc, stuff.length);
+		}
 	}
 
 	public void run() {
 		for (ip = 0; ip < memory.size(); ip++) {
 			process();
 		}
-
 	}
 
 	/**
@@ -464,17 +536,11 @@ public class Retro {
 
 		System.setErr(System.out);
 
-		Retro vm = new Retro(128, 1024, 1000000, false ? null : new File("test/base.rx"));
+		Retro vm = new Retro(128, 1024, 1000000, false ? null : new File("test/core.rx"));
 
-		if (false) {
-			vm.store(new int[] { VM_LIT, 101 }, 0);
-		} else {
-			vm.initialize();
-		}
+		vm.initialize();
 
 		vm.run();
-
-		// vm.dump();
 
 	}
 }
