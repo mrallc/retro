@@ -2,9 +2,11 @@ package com.xoba.retro;
 
 public class Memory implements IMemory {
 
+	private final int n;
 	private final int[] memory;
 
 	public Memory(int n) {
+		this.n = n;
 		this.memory = new int[n];
 	}
 
@@ -25,12 +27,12 @@ public class Memory implements IMemory {
 
 	@Override
 	public int size() {
-		return memory.length;
+		return n;
 	}
 
 	@Override
 	public void clear() {
-		for (int i = 0; i < memory.length; i++) {
+		for (int i = 0; i < n; i++) {
 			memory[i] = 0;
 		}
 	}

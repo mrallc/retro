@@ -1,11 +1,5 @@
 package com.xoba.retro;
 
-/*
- * Copyright (c) 2009 - 2011, Simon Waite and Charles Childers
- * copyright 2012 mike andrews
- * Based on the C# implementation
- */
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -129,6 +123,7 @@ public class Retro {
 
 	public void initialize() {
 		memory.clear();
+		ports.clear();
 		loadImage("retroImage");
 		if (memory.get(0) == 0) {
 			System.out.println("Could not find image file!");
@@ -205,6 +200,11 @@ public class Retro {
 		case -14:
 			ports.set(5, 1);
 			ports.set(0, 1);
+			break;
+		case -15:
+			ports.set(5, -1);
+			ports.set(0, 1);
+			break;
 
 		case -2:
 		case -3:
@@ -464,7 +464,7 @@ public class Retro {
 
 		System.setErr(System.out);
 
-		Retro vm = new Retro(128, 1024, 10000000, new File("test/base.rx"));
+		Retro vm = new Retro(128, 1024, 100000, false ? null : new File("test/base.rx"));
 
 		if (false) {
 			vm.store(new int[] { VM_LIT, 101 }, 0);
