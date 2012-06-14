@@ -476,7 +476,7 @@ public class NGaroVM {
 
 	public static void main(String[] args) throws Exception {
 		System.setErr(System.out);
-		for (String f : new String[] { "files.rx", "base.rx", "core.rx", "vocabs.rx" }) {
+		for (String f : new String[] { "base.rx", "core.rx", "vocabs.rx" }) {
 			IOManager im = new InputManager();
 			im.pushInputName("test/" + f);
 			NGaroVM vm = new NGaroVM(128, 1024, new Memory(1000000), im);
