@@ -462,7 +462,9 @@ public class Retro {
 	 */
 	public static void main(String[] args) throws Exception {
 
-		Retro vm = new Retro(128, 1024, 1000000, new File("test/core.rx"));
+		System.setErr(System.out);
+
+		Retro vm = new Retro(128, 1024, 10000000, new File("test/base.rx"));
 
 		if (false) {
 			vm.store(new int[] { VM_LIT, 101 }, 0);
