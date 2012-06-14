@@ -19,12 +19,15 @@ public class Retro {
 
 	private static final ILogger logger = LogFactory.getDefault().create();
 
-	private int ip, fp;
-	private final byte[] file;
-
+	private int ip;
 	private final IMemory memory;
+
 	private final IMemory ports = new Memory(12);
+
 	private final IStack data, address;
+
+	private int fp;
+	private final byte[] file;
 
 	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
 		this.data = new Stack(dataStackSize);
@@ -178,28 +181,12 @@ public class Retro {
 			ports.set(5, memory.size());
 			ports.set(0, 1);
 			break;
-		case -2:
-			ports.set(5, 0);
-			ports.set(0, 1);
-			break;
-		case -3:
-			ports.set(5, 0);
-			ports.set(0, 1);
-			break;
-		case -4:
-			ports.set(5, 0);
-			ports.set(0, 1);
-			break;
 		case -5:
 			ports.set(5, data.getDepth());
 			ports.set(0, 1);
 			break;
 		case -6:
 			ports.set(5, address.getDepth());
-			ports.set(0, 1);
-			break;
-		case -7:
-			ports.set(5, 0);
 			ports.set(0, 1);
 			break;
 		case -8:
@@ -211,24 +198,22 @@ public class Retro {
 			ports.set(5, 0);
 			ports.set(0, 1);
 			break;
-		case -10:
-			ports.set(5, 0);
-			ports.set(0, 1);
-			break;
-		case -11:
-			ports.set(5, 0);
-			ports.set(0, 1);
-			break;
-		case -12:
-			ports.set(5, 0);
-			ports.set(0, 1);
-			break;
 		case -13:
 			ports.set(5, 32);
 			ports.set(0, 1);
 			break;
 		case -14:
 			ports.set(5, 1);
+			ports.set(0, 1);
+
+		case -2:
+		case -3:
+		case -4:
+		case -7:
+		case -10:
+		case -11:
+		case -12:
+			ports.set(5, 0);
 			ports.set(0, 1);
 			break;
 		}
