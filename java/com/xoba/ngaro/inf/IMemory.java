@@ -8,8 +8,6 @@ public interface IMemory {
 
 	public void set(int pc, int value);
 
-	public void set(int pc, int[] buffer);
-
 	public void clear();
 
 }

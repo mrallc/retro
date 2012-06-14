@@ -1,5 +1,7 @@
 package com.xoba.ngaro;
 
+import java.util.Arrays;
+
 import com.xoba.ngaro.inf.IMemory;
 
 public class Memory implements IMemory {
@@ -23,11 +25,6 @@ public class Memory implements IMemory {
 	}
 
 	@Override
-	public void set(int pc, int[] buffer) {
-		System.arraycopy(buffer, 0, memory, pc, buffer.length);
-	}
-
-	@Override
 	public int size() {
 		return n;
 	}
@@ -37,5 +34,29 @@ public class Memory implements IMemory {
 		for (int i = 0; i < n; i++) {
 			memory[i] = 0;
 		}
+	}
+
+	@Override
+	public boolean equals(Object o) {
+		if (o instanceof IMemory) {
+			IMemory m = (IMemory) o;
+			if (m.size() != this.size()) {
+				return false;
+			}
+			for (int i = 0; i < n; i++) {
+				if (this.get(i) != m.get(i)) {
+					return false;
+				}
+			}
+			return true;
+		} else {
+			return false;
+		}
+
+	}
+
+	@Override
+	public int hashCode() {
+		return Arrays.hashCode(memory);
 	}
 }

@@ -4,8 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
 
-import com.xoba.ngaro.inf.IInputManager;
 import com.xoba.ngaro.inf.IMemory;
+import com.xoba.ngaro.inf.IOManager;
 import com.xoba.ngaro.inf.IStack;
 
 public class NGaroVM {
@@ -17,15 +17,13 @@ public class NGaroVM {
 
 	private final IStack data, address;
 
-	private final IInputManager im = new InputManager();
+	private final IOManager im;
 
-	public NGaroVM(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
+	public NGaroVM(int dataStackSize, int addressStackSize, IMemory m, IOManager im) throws IOException {
 		this.data = new Stack(dataStackSize);
 		this.address = new Stack(addressStackSize);
-		this.memory = new Memory(memorySize);
-		if (f != null) {
-			im.pushInputName(f.getAbsolutePath());
-		}
+		this.memory = m;
+		this.im = im;
 	}
 
 	public static final int VM_NOP = 0;
@@ -129,7 +127,7 @@ public class NGaroVM {
 			try {
 				b[0] = (byte) im.read();
 			} catch (Exception e) {
-				System.out.println(e);
+				System.err.println(e);
 			}
 			ports.set(1, b[0]);
 			ports.set(0, 1);
@@ -137,12 +135,11 @@ public class NGaroVM {
 
 		if (ports.get(2) == 1) {
 			int x = data.pop();
-			char c = (char) x;
 			if (x < 0) {
-				for (c = 0; c < 300; c++)
-					System.out.println("\n");
+				for (char c = 0; c < 300; c++)
+					im.write('\n');
 			} else
-				System.out.print(c);
+				im.write((char) x);
 			ports.set(2, 0);
 			ports.set(0, 1);
 		}
@@ -479,8 +476,10 @@ public class NGaroVM {
 
 	public static void main(String[] args) throws Exception {
 		System.setErr(System.out);
-		for (String f : new String[] { "base.rx", "core.rx", "vocabs.rx" }) {
-			NGaroVM vm = new NGaroVM(128, 1024, 1000000, new File("test/" + f));
+		for (String f : new String[] { "files.rx", "base.rx", "core.rx", "vocabs.rx" }) {
+			IOManager im = new InputManager();
+			im.pushInputName("test/" + f);
+			NGaroVM vm = new NGaroVM(128, 1024, new Memory(1000000), im);
 			vm.initialize();
 			vm.run();
 			System.out.println("********************************************************* DONE");
