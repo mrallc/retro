@@ -131,72 +131,6 @@ public class Retro {
 		}
 	}
 
-	private static interface IStack {
-
-		public int getSP();
-
-		public int pop();
-
-		public void drop(int i);
-
-		public int peek();
-
-		public int peek2();
-
-		public void push(int v);
-
-	}
-
-	private static interface IMemory {
-
-		public int size();
-
-		public int get(int pc);
-
-		public void set(int pc, int value);
-
-		public void set(int pc, int[] buffer);
-
-		public void clear();
-
-	}
-
-	private static class Memory implements IMemory {
-
-		private final int[] memory;
-
-		public Memory(int n) {
-			this.memory = new int[n];
-		}
-
-		@Override
-		public int get(int pc) {
-			return memory[pc];
-		}
-
-		@Override
-		public void set(int pc, int value) {
-			memory[pc] = value;
-		}
-
-		@Override
-		public void set(int pc, int[] buffer) {
-			System.arraycopy(buffer, 0, memory, pc, buffer.length);
-		}
-
-		@Override
-		public int size() {
-			return memory.length;
-		}
-
-		@Override
-		public void clear() {
-			for (int i = 0; i < memory.length; i++) {
-				memory[i] = 0;
-			}
-		}
-	}
-
 	public void handleDevices() {
 
 		if (ports[0] == 1) {
@@ -299,47 +233,6 @@ public class Retro {
 
 	}
 
-	private static class Stack implements IStack {
-
-		private final int[] data;
-		private int sp;
-
-		public Stack(int n) {
-			this.data = new int[n];
-		}
-
-		@Override
-		public int pop() {
-			return data[sp--];
-		}
-
-		@Override
-		public int peek() {
-			return data[sp];
-		}
-
-		@Override
-		public int peek2() {
-			return data[sp - 1];
-		}
-
-		@Override
-		public void push(int v) {
-			data[++sp] = v;
-		}
-
-		@Override
-		public void drop(int i) {
-			sp -= i;
-		}
-
-		@Override
-		public int getSP() {
-			return sp;
-		}
-
-	}
-
 	/**
 	 * Process a single opcode
 	 */
@@ -416,9 +309,8 @@ public class Retro {
 
 		case VM_LT_JUMP: {
 			ip++;
-			if (stack.peek2() > stack.peek())
+			if (stack.pop() < stack.pop())
 				ip = memory.get(ip) - 1;
-			stack.drop(2);
 			break;
 		}
 
