@@ -271,9 +271,7 @@ public class Retro {
 		}
 
 		case VM_PUSH: {
-			rsp++;
-			address[rsp] = data[sp];
-			sp--;
+			address[++rsp] = data[sp--];
 			break;
 		}
 
@@ -380,47 +378,47 @@ public class Retro {
 		}
 
 		case VM_DIVMOD: {
-			int x = data[sp];
-			int y = data[sp - 1];
+			final int x = data[sp];
+			final int y = data[sp - 1];
 			data[sp] = y / x;
 			data[sp - 1] = y % x;
 			break;
 		}
 
 		case VM_AND: {
-			int x = data[sp];
-			int y = data[sp - 1];
+			final int x = data[sp];
+			final int y = data[sp - 1];
 			sp--;
 			data[sp] = x & y;
 			break;
 		}
 
 		case VM_OR: {
-			int x = data[sp];
-			int y = data[sp - 1];
+			final int x = data[sp];
+			final int y = data[sp - 1];
 			sp--;
 			data[sp] = x | y;
 			break;
 		}
 
 		case VM_XOR: {
-			int x = data[sp];
-			int y = data[sp - 1];
+			final int x = data[sp];
+			final int y = data[sp - 1];
 			sp--;
 			data[sp] = x ^ y;
 			break;
 		}
 
 		case VM_SHL: {
-			int x = data[sp];
-			int y = data[sp - 1];
+			final int x = data[sp];
+			final int y = data[sp - 1];
 			sp--;
 			data[sp] = y << x;
 			break;
 		}
 
 		case VM_SHR: {
-			int x = data[sp];
+			final int x = data[sp];
 			int y = data[sp - 1];
 			sp--;
 			data[sp] = y >>= x;
@@ -447,7 +445,7 @@ public class Retro {
 		}
 
 		case VM_IN: {
-			int x = data[sp];
+			final int x = data[sp];
 			data[sp] = ports[x];
 			ports[x] = 0;
 			break;
