@@ -1,4 +1,6 @@
-package com.xoba.retro;
+package com.xoba.ngaro;
+
+import com.xoba.ngaro.inf.IStack;
 
 public class Stack implements IStack {
 

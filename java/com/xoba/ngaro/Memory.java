@@ -1,4 +1,6 @@
-package com.xoba.retro;
+package com.xoba.ngaro;
+
+import com.xoba.ngaro.inf.IMemory;
 
 public class Memory implements IMemory {
 
@@ -17,11 +19,7 @@ public class Memory implements IMemory {
 
 	@Override
 	public void set(int pc, int value) {
-		if (false && pc >= n) {
-			System.out.printf("accessing %,d\n", pc);
-		} else {
-			memory[pc] = value;
-		}
+		memory[pc] = value;
 	}
 
 	@Override

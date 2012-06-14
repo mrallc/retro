@@ -1,4 +1,4 @@
-package com.xoba.retro;
+package com.xoba.ngaro.inf;
 
 public interface IStack {
 

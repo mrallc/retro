@@ -1,17 +1,14 @@
-package com.xoba.retro;
+package com.xoba.ngaro;
 
 import java.io.File;
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.RandomAccessFile;
 
-import com.xoba.util.ILogger;
-import com.xoba.util.LogFactory;
+import com.xoba.ngaro.inf.IInputManager;
+import com.xoba.ngaro.inf.IMemory;
+import com.xoba.ngaro.inf.IStack;
 
-public class Retro {
-
-	private static final ILogger logger = LogFactory.getDefault().create();
+public class NGaroVM {
 
 	private int ip;
 	private final IMemory memory;
@@ -22,12 +19,12 @@ public class Retro {
 
 	private final IInputManager im = new InputManager();
 
-	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
+	public NGaroVM(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
 		this.data = new Stack(dataStackSize);
 		this.address = new Stack(addressStackSize);
 		this.memory = new Memory(memorySize);
 		if (f != null) {
-			im.push(f.getAbsolutePath());
+			im.pushInputName(f.getAbsolutePath());
 		}
 	}
 
@@ -121,47 +118,6 @@ public class Retro {
 		}
 	}
 
-	public static interface IInputManager {
-
-		public void push(String name) throws IOException;
-
-		public int read() throws IOException;
-	}
-
-	private static class InputManager implements IInputManager {
-
-		private final java.util.Stack<InputStream> stack = new java.util.Stack<InputStream>();
-
-		public InputManager() {
-			stack.push(System.in);
-		}
-
-		@Override
-		public void push(String name) throws IOException {
-			File f = new File(name);
-			logger.debugf("finding %s", f);
-			stack.push(new FileInputStream(f));
-		}
-
-		@Override
-		public int read() throws IOException {
-			int b = 0;
-			boolean done = false;
-			while (!done) {
-				InputStream in = stack.peek();
-				b = in.read();
-				if (b >= 0) {
-					done = true;
-				} else {
-					in.close();
-					stack.pop();
-				}
-			}
-			return b;
-		}
-
-	}
-
 	public void handleDevices() {
 
 		if (ports.get(0) == 1) {
@@ -218,57 +174,22 @@ public class Retro {
 				}
 			}
 			try {
-				im.push(buf.toString());
+				im.pushInputName(buf.toString());
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
 			break;
 		}
 
-		case -1: {
-			logger.warnf("unhandled file open");
-			break;
-		}
-
-		case -2: {
-			logger.warnf("unhandled file read");
-			break;
-		}
-
-		case -3: {
-			logger.warnf("unhandled file write");
-			break;
-		}
-
-		case -4: {
-			logger.warnf("unhandled file close");
-			break;
-		}
-
-		case -5: {
-			logger.warnf("unhandled file current location");
-			break;
-		}
-
-		case -6: {
-			logger.warnf("unhandled file seek");
-			break;
-		}
-
-		case -7: {
-			logger.warnf("unhandled file size");
-			break;
-		}
-
-		case -8: {
-			logger.warnf("unhandled file delete");
-			break;
-		}
-
-		default: {
-			logger.warnf("unhandled file %,d", ports.get(4));
-			break;
-		}
+		case -1:
+		case -2:
+		case -3:
+		case -4:
+		case -5:
+		case -6:
+		case -7:
+		case -8:
+		default:
 		}
 
 		ports.set(4, 0);
@@ -556,13 +477,13 @@ public class Retro {
 		}
 	}
 
-	/**
-	 * The main entry point. What else needs to be said?
-	 */
 	public static void main(String[] args) throws Exception {
 		System.setErr(System.out);
-		Retro vm = new Retro(128, 1024, 1000000, false ? null : new File("test/core.rx"));
-		vm.initialize();
-		vm.run();
+		for (String f : new String[] { "base.rx", "core.rx", "vocabs.rx" }) {
+			NGaroVM vm = new NGaroVM(128, 1024, 1000000, new File("test/" + f));
+			vm.initialize();
+			vm.run();
+			System.out.println("********************************************************* DONE");
+		}
 	}
 }
