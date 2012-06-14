@@ -190,11 +190,11 @@ public class Retro {
 			ports[0] = 1;
 			break;
 		case -5:
-			ports[5] = data.getSP();
+			ports[5] = data.getDepth();
 			ports[0] = 1;
 			break;
 		case -6:
-			ports[5] = address.getSP();
+			ports[5] = address.getDepth();
 			ports[0] = 1;
 			break;
 		case -7:

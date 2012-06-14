@@ -8,7 +8,7 @@ public interface IStack {
 
 	public void push(int v);
 
-	public int getSP();
+	public int getDepth();
 
 	public void drop(int i);
 
