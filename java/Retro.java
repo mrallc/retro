@@ -16,16 +16,18 @@ public class Retro {
 
 	private static final ILogger logger = LogFactory.getDefault().create();
 
-	private int sp, rsp, ip, fp;
+	private int rsp, ip, fp;
 	private final int ports[] = new int[12];
 	private final byte[] file;
 
-	private final int data[], address[], memory[];
+	private final int address[];
+	private final IMemory memory;
+	private final Stack s;
 
 	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
-		data = new int[dataStackSize];
+		this.s = new Stack(dataStackSize);
 		address = new int[addressStackSize];
-		memory = new int[memorySize];
+		memory = new Memory(memorySize);
 		if (f == null) {
 			file = new byte[0];
 		} else {
@@ -86,7 +88,7 @@ public class Retro {
 	}
 
 	public void loadImage(String name) {
-		memory[0] = 0;
+		memory.set(0, 0);
 		File f = new File(name);
 		if (f.exists()) {
 			try {
@@ -94,7 +96,7 @@ public class Retro {
 				long n = in.length() / 4;
 				try {
 					for (int i = 0; i < n; i++) {
-						memory[i] = switchEndian(in.readInt());
+						memory.set(i, switchEndian(in.readInt()));
 					}
 				} finally {
 					in.close();
@@ -109,8 +111,8 @@ public class Retro {
 		try {
 			RandomAccessFile out = new RandomAccessFile(name, "rw");
 			try {
-				for (int i = 0; i < memory.length; i++) {
-					out.writeInt(switchEndian(memory[i]));
+				for (int i = 0; i < memory.size(); i++) {
+					out.writeInt(switchEndian(memory.get(i)));
 				}
 			} finally {
 				out.close();
@@ -121,17 +123,27 @@ public class Retro {
 	}
 
 	public void initialize() {
-		for (int i = 0; i < memory.length; i++) {
-			memory[i] = 0;
-		}
+		memory.clear();
 		loadImage("retroImage");
-		if (memory[0] == 0) {
+		if (memory.get(0) == 0) {
 			System.out.println("Could not find image file!");
 			System.exit(-1);
 		}
 	}
 
+	private static interface IStack {
+
+		public int pop();
+
+		public int peek();
+
+		public void push(int v);
+
+	}
+
 	private static interface IMemory {
+
+		public int size();
 
 		public int get(int pc);
 
@@ -139,6 +151,44 @@ public class Retro {
 
 		public void set(int pc, int[] buffer);
 
+		public void clear();
+
+	}
+
+	private static class Memory implements IMemory {
+
+		private final int[] memory;
+
+		public Memory(int n) {
+			this.memory = new int[n];
+		}
+
+		@Override
+		public int get(int pc) {
+			return memory[pc];
+		}
+
+		@Override
+		public void set(int pc, int value) {
+			memory[pc] = value;
+		}
+
+		@Override
+		public void set(int pc, int[] buffer) {
+			System.arraycopy(buffer, 0, memory, pc, buffer.length);
+		}
+
+		@Override
+		public int size() {
+			return memory.length;
+		}
+
+		@Override
+		public void clear() {
+			for (int i = 0; i < memory.length; i++) {
+				memory[i] = 0;
+			}
+		}
 	}
 
 	public void handleDevices() {
@@ -163,13 +213,13 @@ public class Retro {
 		}
 
 		if (ports[2] == 1) {
-			char c = (char) data[sp];
-			if (data[sp] < 0) {
+			char c = (char) s.data[s.sp];
+			if (s.data[s.sp] < 0) {
 				for (c = 0; c < 300; c++)
 					System.out.println("\n");
 			} else
 				System.out.print(c);
-			sp--;
+			s.sp--;
 			ports[2] = 0;
 			ports[0] = 1;
 		}
@@ -183,7 +233,7 @@ public class Retro {
 		switch (ports[5]) {
 
 		case -1:
-			ports[5] = memory.length;
+			ports[5] = memory.size();
 			ports[0] = 1;
 			break;
 		case -2:
@@ -199,7 +249,7 @@ public class Retro {
 			ports[0] = 1;
 			break;
 		case -5:
-			ports[5] = sp;
+			ports[5] = s.sp;
 			ports[0] = 1;
 			break;
 		case -6:
@@ -215,7 +265,7 @@ public class Retro {
 			ports[0] = 1;
 			break;
 		case -9:
-			ip = memory.length;
+			ip = memory.size();
 			ports[5] = 0;
 			ports[0] = 1;
 			break;
@@ -243,12 +293,30 @@ public class Retro {
 
 	}
 
-	private int get(int ip) {
-		return memory[ip];
-	}
+	private static class Stack implements IStack {
 
-	private void set(int ip, int v) {
-		memory[ip] = v;
+		private final int[] data;
+		private int sp;
+
+		public Stack(int n) {
+			this.data = new int[n];
+		}
+
+		@Override
+		public int pop() {
+			return data[sp--];
+		}
+
+		@Override
+		public int peek() {
+			return data[sp];
+		}
+
+		@Override
+		public void push(int v) {
+			data[++sp] = v;
+		}
+
 	}
 
 	/**
@@ -256,64 +324,63 @@ public class Retro {
 	 */
 	public void process() {
 
-		switch (get(ip)) {
+		switch (memory.get(ip)) {
 
 		case VM_NOP: {
 			break;
 		}
 
 		case VM_LIT: {
-			data[++sp] = get(++ip);
+			s.push(memory.get(++ip));
 			break;
 		}
 
 		case VM_DUP: {
-			sp++;
-			data[sp] = data[sp - 1];
+			s.push(s.peek());
 			break;
 		}
 
 		case VM_DROP: {
-			data[sp--] = 0;
+			s.data[s.sp--] = 0;
 			break;
 		}
 
 		case VM_SWAP: {
-			int x = data[sp];
-			int y = data[sp - 1];
-			data[sp] = y;
-			data[sp - 1] = x;
+			int x = s.data[s.sp];
+			int y = s.data[s.sp - 1];
+			s.data[s.sp] = y;
+			s.data[s.sp - 1] = x;
 			break;
 		}
 
 		case VM_PUSH: {
-			address[++rsp] = data[sp--];
+			address[++rsp] = s.data[s.sp--];
 			break;
 		}
 
 		case VM_POP: {
-			sp++;
-			data[sp] = address[rsp];
+			s.sp++;
+			s.data[s.sp] = address[rsp];
 			rsp--;
 			break;
 		}
 
 		case VM_LOOP: {
-			data[sp]--;
+			s.data[s.sp]--;
 			ip++;
-			if (data[sp] != 0 && data[sp] > -1)
-				ip = get(ip) - 1;
+			if (s.data[s.sp] != 0 && s.data[s.sp] > -1)
+				ip = memory.get(ip) - 1;
 			else
-				sp--;
+				s.sp--;
 			break;
 		}
 
 		case VM_JUMP: {
 			ip++;
-			ip = get(ip) - 1;
-			if (get(ip + 1) == 0)
+			ip = memory.get(ip) - 1;
+			if (memory.get(ip + 1) == 0)
 				ip++;
-			if (get(ip + 1) == 0)
+			if (memory.get(ip + 1) == 0)
 				ip++;
 			break;
 		}
@@ -321,129 +388,129 @@ public class Retro {
 		case VM_RETURN: {
 			ip = address[rsp];
 			rsp--;
-			if (get(ip + 1) == 0)
+			if (memory.get(ip + 1) == 0)
 				ip++;
-			if (get(ip + 1) == 0)
+			if (memory.get(ip + 1) == 0)
 				ip++;
 			break;
 		}
 
 		case VM_LT_JUMP: {
 			ip++;
-			if (data[sp - 1] > data[sp])
-				ip = get(ip) - 1;
-			sp = sp - 2;
+			if (s.data[s.sp - 1] > s.data[s.sp])
+				ip = memory.get(ip) - 1;
+			s.sp = s.sp - 2;
 			break;
 		}
 
 		case VM_GT_JUMP: {
 			ip++;
-			if (data[sp - 1] < data[sp])
-				ip = get(ip) - 1;
-			sp = sp - 2;
+			if (s.data[s.sp - 1] < s.data[s.sp])
+				ip = memory.get(ip) - 1;
+			s.sp = s.sp - 2;
 			break;
 		}
 
 		case VM_NE_JUMP: {
 			ip++;
-			if (data[sp - 1] != data[sp])
-				ip = get(ip) - 1;
-			sp = sp - 2;
+			if (s.data[s.sp - 1] != s.data[s.sp])
+				ip = memory.get(ip) - 1;
+			s.sp = s.sp - 2;
 			break;
 		}
 
 		case VM_EQ_JUMP: {
 			ip++;
-			if (data[sp - 1] == data[sp])
-				ip = get(ip) - 1;
-			sp = sp - 2;
+			if (s.data[s.sp - 1] == s.data[s.sp])
+				ip = memory.get(ip) - 1;
+			s.sp = s.sp - 2;
 			break;
 		}
 
 		case VM_FETCH: {
-			int x = data[sp];
-			data[sp] = get(x);
+			int x = s.data[s.sp];
+			s.data[s.sp] = memory.get(x);
 			break;
 		}
 
 		case VM_STORE: {
-			set(data[sp], data[sp - 1]);
-			sp = sp - 2;
+			memory.set(s.data[s.sp], s.data[s.sp - 1]);
+			s.sp = s.sp - 2;
 			break;
 		}
 
 		case VM_ADD: {
-			data[sp - 1] += data[sp];
-			data[sp] = 0;
-			sp--;
+			s.data[s.sp - 1] += s.data[s.sp];
+			s.data[s.sp] = 0;
+			s.sp--;
 			break;
 		}
 
 		case VM_SUB: {
-			data[sp - 1] -= data[sp];
-			data[sp] = 0;
-			sp--;
+			s.data[s.sp - 1] -= s.data[s.sp];
+			s.data[s.sp] = 0;
+			s.sp--;
 			break;
 		}
 
 		case VM_MUL: {
-			data[sp - 1] *= data[sp];
-			data[sp] = 0;
-			sp--;
+			s.data[s.sp - 1] *= s.data[s.sp];
+			s.data[s.sp] = 0;
+			s.sp--;
 			break;
 		}
 
 		case VM_DIVMOD: {
-			final int x = data[sp];
-			final int y = data[sp - 1];
-			data[sp] = y / x;
-			data[sp - 1] = y % x;
+			final int x = s.data[s.sp];
+			final int y = s.data[s.sp - 1];
+			s.data[s.sp] = y / x;
+			s.data[s.sp - 1] = y % x;
 			break;
 		}
 
 		case VM_AND: {
-			final int x = data[sp];
-			final int y = data[sp - 1];
-			sp--;
-			data[sp] = x & y;
+			final int x = s.data[s.sp];
+			final int y = s.data[s.sp - 1];
+			s.sp--;
+			s.data[s.sp] = x & y;
 			break;
 		}
 
 		case VM_OR: {
-			final int x = data[sp];
-			final int y = data[sp - 1];
-			sp--;
-			data[sp] = x | y;
+			final int x = s.data[s.sp];
+			final int y = s.data[s.sp - 1];
+			s.sp--;
+			s.data[s.sp] = x | y;
 			break;
 		}
 
 		case VM_XOR: {
-			final int x = data[sp];
-			final int y = data[sp - 1];
-			sp--;
-			data[sp] = x ^ y;
+			final int x = s.data[s.sp];
+			final int y = s.data[s.sp - 1];
+			s.sp--;
+			s.data[s.sp] = x ^ y;
 			break;
 		}
 
 		case VM_SHL: {
-			final int x = data[sp];
-			final int y = data[sp - 1];
-			sp--;
-			data[sp] = y << x;
+			final int x = s.data[s.sp];
+			final int y = s.data[s.sp - 1];
+			s.sp--;
+			s.data[s.sp] = y << x;
 			break;
 		}
 
 		case VM_SHR: {
-			final int x = data[sp];
-			int y = data[sp - 1];
-			sp--;
-			data[sp] = y >>= x;
+			final int x = s.data[s.sp];
+			int y = s.data[s.sp - 1];
+			s.sp--;
+			s.data[s.sp] = y >>= x;
 			break;
 		}
 
 		case VM_ZERO_EXIT: {
-			if (data[sp] == 0) {
-				sp--;
+			if (s.data[s.sp] == 0) {
+				s.sp--;
 				ip = address[rsp];
 				rsp--;
 			}
@@ -451,26 +518,26 @@ public class Retro {
 		}
 
 		case VM_INC: {
-			data[sp]++;
+			s.data[s.sp]++;
 			break;
 		}
 
 		case VM_DEC: {
-			data[sp]--;
+			s.data[s.sp]--;
 			break;
 		}
 
 		case VM_IN: {
-			final int x = data[sp];
-			data[sp] = ports[x];
+			final int x = s.data[s.sp];
+			s.data[s.sp] = ports[x];
 			ports[x] = 0;
 			break;
 		}
 
 		case VM_OUT: {
 			ports[0] = 0;
-			ports[data[sp]] = data[sp - 1];
-			sp = sp - 2;
+			ports[s.data[s.sp]] = s.data[s.sp - 1];
+			s.sp = s.sp - 2;
 			break;
 		}
 
@@ -482,10 +549,10 @@ public class Retro {
 		default: {
 			rsp++;
 			address[rsp] = ip;
-			ip = get(ip) - 1;
-			if (get(ip + 1) == 0)
+			ip = memory.get(ip) - 1;
+			if (memory.get(ip + 1) == 0)
 				ip++;
-			if (get(ip + 1) == 0)
+			if (memory.get(ip + 1) == 0)
 				ip++;
 			break;
 		}
@@ -498,10 +565,10 @@ public class Retro {
 
 	private void dump() {
 		for (int i = 0; i < 10; i++) {
-			logger.debugf("mem[%2d] = %d", i, memory[i]);
+			logger.debugf("mem[%2d] = %d", i, memory.get(i));
 		}
-		for (int i = 0; i < sp + 3; i++) {
-			logger.debugf("data[%2d] = %d", i, data[i]);
+		for (int i = 0; i < s.sp + 3; i++) {
+			logger.debugf("data[%2d] = %d", i, s.data[i]);
 		}
 	}
 
@@ -521,7 +588,7 @@ public class Retro {
 			vm.process();
 		}
 
-		vm.dump();
+		// vm.dump();
 
 	}
 }
