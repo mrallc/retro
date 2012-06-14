@@ -22,10 +22,10 @@ public class Retro {
 
 	private final int address[];
 	private final IMemory memory;
-	private final Stack s;
+	private final Stack stack;
 
 	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
-		this.s = new Stack(dataStackSize);
+		this.stack = new Stack(dataStackSize);
 		address = new int[addressStackSize];
 		memory = new Memory(memorySize);
 		if (f == null) {
@@ -135,7 +135,11 @@ public class Retro {
 
 		public int pop();
 
+		public void drop(int i);
+
 		public int peek();
+
+		public int peek2();
 
 		public void push(int v);
 
@@ -213,13 +217,13 @@ public class Retro {
 		}
 
 		if (ports[2] == 1) {
-			char c = (char) s.data[s.sp];
-			if (s.data[s.sp] < 0) {
+			char c = (char) stack.data[stack.sp];
+			if (stack.data[stack.sp] < 0) {
 				for (c = 0; c < 300; c++)
 					System.out.println("\n");
 			} else
 				System.out.print(c);
-			s.sp--;
+			stack.sp--;
 			ports[2] = 0;
 			ports[0] = 1;
 		}
@@ -249,7 +253,7 @@ public class Retro {
 			ports[0] = 1;
 			break;
 		case -5:
-			ports[5] = s.sp;
+			ports[5] = stack.sp;
 			ports[0] = 1;
 			break;
 		case -6:
@@ -313,8 +317,18 @@ public class Retro {
 		}
 
 		@Override
+		public int peek2() {
+			return data[sp - 1];
+		}
+
+		@Override
 		public void push(int v) {
 			data[++sp] = v;
+		}
+
+		@Override
+		public void drop(int i) {
+			sp -= i;
 		}
 
 	}
@@ -331,47 +345,45 @@ public class Retro {
 		}
 
 		case VM_LIT: {
-			s.push(memory.get(++ip));
+			stack.push(memory.get(++ip));
 			break;
 		}
 
 		case VM_DUP: {
-			s.push(s.peek());
+			stack.push(stack.peek());
 			break;
 		}
 
 		case VM_DROP: {
-			s.data[s.sp--] = 0;
+			stack.pop();
 			break;
 		}
 
 		case VM_SWAP: {
-			int x = s.data[s.sp];
-			int y = s.data[s.sp - 1];
-			s.data[s.sp] = y;
-			s.data[s.sp - 1] = x;
+			int x = stack.pop();
+			int y = stack.pop();
+			stack.push(x);
+			stack.push(y);
 			break;
 		}
 
 		case VM_PUSH: {
-			address[++rsp] = s.data[s.sp--];
+			address[++rsp] = stack.pop();
 			break;
 		}
 
 		case VM_POP: {
-			s.sp++;
-			s.data[s.sp] = address[rsp];
-			rsp--;
+			stack.push(address[rsp--]);
 			break;
 		}
 
 		case VM_LOOP: {
-			s.data[s.sp]--;
+			stack.push(stack.pop() - 1);
 			ip++;
-			if (s.data[s.sp] != 0 && s.data[s.sp] > -1)
+			if (stack.peek() != 0 && stack.peek() > -1)
 				ip = memory.get(ip) - 1;
 			else
-				s.sp--;
+				stack.drop(1);
 			break;
 		}
 
@@ -397,120 +409,114 @@ public class Retro {
 
 		case VM_LT_JUMP: {
 			ip++;
-			if (s.data[s.sp - 1] > s.data[s.sp])
+			if (stack.peek2() > stack.peek())
 				ip = memory.get(ip) - 1;
-			s.sp = s.sp - 2;
+			stack.drop(2);
 			break;
 		}
 
 		case VM_GT_JUMP: {
 			ip++;
-			if (s.data[s.sp - 1] < s.data[s.sp])
+			if (stack.peek2() < stack.peek())
 				ip = memory.get(ip) - 1;
-			s.sp = s.sp - 2;
+			stack.drop(2);
 			break;
 		}
 
 		case VM_NE_JUMP: {
 			ip++;
-			if (s.data[s.sp - 1] != s.data[s.sp])
+			if (stack.peek2() != stack.peek())
 				ip = memory.get(ip) - 1;
-			s.sp = s.sp - 2;
+			stack.drop(2);
 			break;
 		}
 
 		case VM_EQ_JUMP: {
 			ip++;
-			if (s.data[s.sp - 1] == s.data[s.sp])
+			if (stack.data[stack.sp - 1] == stack.data[stack.sp])
 				ip = memory.get(ip) - 1;
-			s.sp = s.sp - 2;
+			stack.drop(2);
 			break;
 		}
 
 		case VM_FETCH: {
-			int x = s.data[s.sp];
-			s.data[s.sp] = memory.get(x);
+			int x = stack.data[stack.sp];
+			stack.data[stack.sp] = memory.get(x);
 			break;
 		}
 
 		case VM_STORE: {
-			memory.set(s.data[s.sp], s.data[s.sp - 1]);
-			s.sp = s.sp - 2;
+			memory.set(stack.pop(), stack.pop());
 			break;
 		}
 
 		case VM_ADD: {
-			s.data[s.sp - 1] += s.data[s.sp];
-			s.data[s.sp] = 0;
-			s.sp--;
+			int y = stack.pop();
+			int x = stack.pop();
+			stack.push(x + y);
 			break;
 		}
 
 		case VM_SUB: {
-			s.data[s.sp - 1] -= s.data[s.sp];
-			s.data[s.sp] = 0;
-			s.sp--;
+			int y = stack.pop();
+			int x = stack.pop();
+			stack.push(x - y);
 			break;
 		}
 
 		case VM_MUL: {
-			s.data[s.sp - 1] *= s.data[s.sp];
-			s.data[s.sp] = 0;
-			s.sp--;
+			int y = stack.pop();
+			int x = stack.pop();
+			stack.push(x * y);
 			break;
 		}
 
 		case VM_DIVMOD: {
-			final int x = s.data[s.sp];
-			final int y = s.data[s.sp - 1];
-			s.data[s.sp] = y / x;
-			s.data[s.sp - 1] = y % x;
+			final int x = stack.pop();
+			final int y = stack.pop();
+			stack.push(y % x);
+			stack.push(y / x);
 			break;
 		}
 
 		case VM_AND: {
-			final int x = s.data[s.sp];
-			final int y = s.data[s.sp - 1];
-			s.sp--;
-			s.data[s.sp] = x & y;
+			int y = stack.pop();
+			int x = stack.pop();
+			stack.push(x & y);
 			break;
 		}
 
 		case VM_OR: {
-			final int x = s.data[s.sp];
-			final int y = s.data[s.sp - 1];
-			s.sp--;
-			s.data[s.sp] = x | y;
+			int y = stack.pop();
+			int x = stack.pop();
+			stack.push(x | y);
 			break;
 		}
 
 		case VM_XOR: {
-			final int x = s.data[s.sp];
-			final int y = s.data[s.sp - 1];
-			s.sp--;
-			s.data[s.sp] = x ^ y;
+			int y = stack.pop();
+			int x = stack.pop();
+			stack.push(x ^ y);
 			break;
 		}
 
 		case VM_SHL: {
-			final int x = s.data[s.sp];
-			final int y = s.data[s.sp - 1];
-			s.sp--;
-			s.data[s.sp] = y << x;
+			int y = stack.pop();
+			int x = stack.pop();
+			stack.push(x << y);
 			break;
 		}
 
 		case VM_SHR: {
-			final int x = s.data[s.sp];
-			int y = s.data[s.sp - 1];
-			s.sp--;
-			s.data[s.sp] = y >>= x;
+			int y = stack.pop();
+			int x = stack.pop();
+			stack.push(x >>= y);
 			break;
 		}
 
 		case VM_ZERO_EXIT: {
-			if (s.data[s.sp] == 0) {
-				s.sp--;
+			if (stack.peek() == 0) {
+				stack.drop(1);
 				ip = address[rsp];
 				rsp--;
 			}
@@ -518,26 +524,26 @@ public class Retro {
 		}
 
 		case VM_INC: {
-			s.data[s.sp]++;
+			stack.push(stack.pop() + 1);
 			break;
 		}
 
 		case VM_DEC: {
-			s.data[s.sp]--;
+			stack.push(stack.pop() - 1);
 			break;
 		}
 
 		case VM_IN: {
-			final int x = s.data[s.sp];
-			s.data[s.sp] = ports[x];
+			final int x = stack.pop();
+			stack.push(ports[x]);
 			ports[x] = 0;
 			break;
 		}
 
 		case VM_OUT: {
 			ports[0] = 0;
-			ports[s.data[s.sp]] = s.data[s.sp - 1];
-			s.sp = s.sp - 2;
+			ports[stack.data[stack.sp]] = stack.data[stack.sp - 1];
+			stack.sp = stack.sp - 2;
 			break;
 		}
 
@@ -567,8 +573,8 @@ public class Retro {
 		for (int i = 0; i < 10; i++) {
 			logger.debugf("mem[%2d] = %d", i, memory.get(i));
 		}
-		for (int i = 0; i < s.sp + 3; i++) {
-			logger.debugf("data[%2d] = %d", i, s.data[i]);
+		for (int i = 0; i < stack.sp + 3; i++) {
+			logger.debugf("data[%2d] = %d", i, stack.data[i]);
 		}
 	}
 
