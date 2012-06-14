@@ -464,7 +464,7 @@ public class Retro {
 
 		System.setErr(System.out);
 
-		Retro vm = new Retro(128, 1024, 100000, false ? null : new File("test/base.rx"));
+		Retro vm = new Retro(128, 1024, 1000000, false ? null : new File("test/base.rx"));
 
 		if (false) {
 			vm.store(new int[] { VM_LIT, 101 }, 0);
