@@ -2,6 +2,7 @@ package com.xoba.retro;
 
 /*
  * Copyright (c) 2009 - 2011, Simon Waite and Charles Childers
+ * copyright 2012 mike andrews
  * Based on the C# implementation
  */
 
@@ -19,16 +20,16 @@ public class Retro {
 	private static final ILogger logger = LogFactory.getDefault().create();
 
 	private int ip, fp;
-	private final int ports[] = new int[12];
 	private final byte[] file;
 
 	private final IMemory memory;
+	private final IMemory ports = new Memory(12);
 	private final IStack data, address;
 
 	public Retro(int dataStackSize, int addressStackSize, int memorySize, File f) throws IOException {
 		this.data = new Stack(dataStackSize);
-		address = new Stack(addressStackSize);
-		memory = new Memory(memorySize);
+		this.address = new Stack(addressStackSize);
+		this.memory = new Memory(memorySize);
 		if (f == null) {
 			file = new byte[0];
 		} else {
@@ -134,13 +135,13 @@ public class Retro {
 
 	public void handleDevices() {
 
-		if (ports[0] == 1) {
+		if (ports.get(0) == 1) {
 			return;
 		}
 
-		if (ports[0] == 0 && ports[1] == 1) {
+		if (ports.get(0) == 0 && ports.get(1) == 1) {
 			if (fp < file.length) {
-				ports[1] = file[fp++];
+				ports.set(1, file[fp++]);
 			} else {
 				final byte[] b = { 0, 0, 0 };
 				try {
@@ -148,12 +149,12 @@ public class Retro {
 				} catch (Exception e) {
 					System.out.println(e);
 				}
-				ports[1] = b[0];
+				ports.set(1, b[0]);
 			}
-			ports[0] = 1;
+			ports.set(0, 1);
 		}
 
-		if (ports[2] == 1) {
+		if (ports.get(2) == 1) {
 			int x = data.pop();
 			char c = (char) x;
 			if (x < 0) {
@@ -161,74 +162,74 @@ public class Retro {
 					System.out.println("\n");
 			} else
 				System.out.print(c);
-			ports[2] = 0;
-			ports[0] = 1;
+			ports.set(2, 0);
+			ports.set(0, 1);
 		}
 
-		if (ports[4] == 1) {
+		if (ports.get(4) == 1) {
 			saveImage("retroImage");
-			ports[4] = 0;
-			ports[0] = 1;
+			ports.set(4, 0);
+			ports.set(0, 1);
 		}
 
-		switch (ports[5]) {
+		switch (ports.get(5)) {
 
 		case -1:
-			ports[5] = memory.size();
-			ports[0] = 1;
+			ports.set(5, memory.size());
+			ports.set(0, 1);
 			break;
 		case -2:
-			ports[5] = 0;
-			ports[0] = 1;
+			ports.set(5, 0);
+			ports.set(0, 1);
 			break;
 		case -3:
-			ports[5] = 0;
-			ports[0] = 1;
+			ports.set(5, 0);
+			ports.set(0, 1);
 			break;
 		case -4:
-			ports[5] = 0;
-			ports[0] = 1;
+			ports.set(5, 0);
+			ports.set(0, 1);
 			break;
 		case -5:
-			ports[5] = data.getDepth();
-			ports[0] = 1;
+			ports.set(5, data.getDepth());
+			ports.set(0, 1);
 			break;
 		case -6:
-			ports[5] = address.getDepth();
-			ports[0] = 1;
+			ports.set(5, address.getDepth());
+			ports.set(0, 1);
 			break;
 		case -7:
-			ports[5] = 0;
-			ports[0] = 1;
+			ports.set(5, 0);
+			ports.set(0, 1);
 			break;
 		case -8:
-			ports[5] = (int) (System.currentTimeMillis() / 1000L);
-			ports[0] = 1;
+			ports.set(5, (int) (System.currentTimeMillis() / 1000L));
+			ports.set(0, 1);
 			break;
 		case -9:
 			ip = memory.size();
-			ports[5] = 0;
-			ports[0] = 1;
+			ports.set(5, 0);
+			ports.set(0, 1);
 			break;
 		case -10:
-			ports[5] = 0;
-			ports[0] = 1;
+			ports.set(5, 0);
+			ports.set(0, 1);
 			break;
 		case -11:
-			ports[5] = 0;
-			ports[0] = 1;
+			ports.set(5, 0);
+			ports.set(0, 1);
 			break;
 		case -12:
-			ports[5] = 0;
-			ports[0] = 1;
+			ports.set(5, 0);
+			ports.set(0, 1);
 			break;
 		case -13:
-			ports[5] = 32;
-			ports[0] = 1;
+			ports.set(5, 32);
+			ports.set(0, 1);
 			break;
 		case -14:
-			ports[5] = 1;
-			ports[0] = 1;
+			ports.set(5, 1);
+			ports.set(0, 1);
 			break;
 		}
 
@@ -430,16 +431,16 @@ public class Retro {
 
 		case VM_IN: {
 			final int x = data.pop();
-			data.push(ports[x]);
-			ports[x] = 0;
+			data.push(ports.get(x));
+			ports.set(x, 0);
 			break;
 		}
 
 		case VM_OUT: {
-			ports[0] = 0;
+			ports.set(0, 0);
 			int x = data.pop();
 			int y = data.pop();
-			ports[x] = y;
+			ports.set(x, y);
 			break;
 		}
 
