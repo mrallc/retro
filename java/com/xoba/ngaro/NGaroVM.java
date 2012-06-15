@@ -527,17 +527,27 @@ public class NGaroVM {
 		}
 	}
 
-	public static void main(String[] args) throws Exception {
-		System.setErr(System.out);
+	private static void runTests() throws Exception {
 		for (String f : new String[] { "files.rx", "base.rx", "core.rx", "vocabs.rx" }) {
 			IReplIOManager rm = new ReplIOManager();
 			rm.includeFile("test/" + f);
-
 			IOManager im = new InputManager();
 			NGaroVM vm = new NGaroVM(128, 1024, new Memory(1000000), im, rm);
 			vm.initialize();
 			vm.run();
 			System.out.println("********************************************************* DONE");
+		}
+	}
+
+	public static void main(String[] args) throws Exception {
+		if (true) {
+			IReplIOManager rm = new ReplIOManager();
+			IOManager im = new InputManager();
+			NGaroVM vm = new NGaroVM(128, 1024, new Memory(1000000), im, rm);
+			vm.initialize();
+			vm.run();
+		} else {
+			runTests();
 		}
 	}
 }
