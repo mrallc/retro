@@ -3,6 +3,9 @@ package com.xoba.ngaro;
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Random;
 
 import com.xoba.ngaro.inf.IMemory;
 import com.xoba.ngaro.inf.IOManager;
@@ -116,6 +119,185 @@ public class NGaroVM {
 		}
 	}
 
+	private final Map<Integer, RandomAccessFile> randomAccessFiles = new HashMap<Integer, RandomAccessFile>();
+	private final Map<Integer, File> files = new HashMap<Integer, File>();
+
+	private int findOpenSlot() {
+		Random random = new Random();
+		while (true) {
+			int n = 1 + random.nextInt(100000);
+			if (!randomAccessFiles.containsKey(n)) {
+				return n;
+			}
+		}
+	}
+
+	private RandomAccessFile create(File f, int mode) {
+		try {
+
+			RandomAccessFile raf = null;
+			switch (mode) {
+
+			case 0: { // reading
+				if (f.exists()) {
+					raf = new RandomAccessFile(f, "r");
+				}
+				break;
+			}
+
+			case 1: { // writing
+				raf = new RandomAccessFile(f, "rw");
+				raf.setLength(0);
+				break;
+			}
+
+			case 2: { // append
+				raf = new RandomAccessFile(f, "rw");
+				raf.seek(raf.length());
+				break;
+			}
+
+			case 3: { // mod
+
+				if (f.exists()) {
+					raf = new RandomAccessFile(f, "rw");
+				}
+				break;
+
+			}
+
+			default: {
+				throw new IllegalStateException("illegal mode " + mode);
+			}
+
+			}
+
+			return raf;
+
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+
+	}
+
+	private int rxOpenFile() {
+
+		int mode = data.pop();
+
+		int slot = findOpenSlot();
+
+		String filename = rxGetString();
+
+		File f = new File(filename);
+
+		RandomAccessFile raf = create(f, mode);
+
+		if (raf == null) {
+			return 0;
+		} else {
+			files.put(slot, f);
+			randomAccessFiles.put(slot, raf);
+			return slot;
+		}
+
+	}
+
+	private int rxReadFile() {
+		int slot = data.pop();
+		try {
+			int c = randomAccessFiles.get(slot).read();
+			if (c < 0) {
+				return 0;
+			} else {
+				return c;
+			}
+		} catch (Exception e) {
+			return 0;
+		}
+	}
+
+	private int rxWriteFile() {
+		int slot = data.pop();
+		int c = data.pop();
+		try {
+			randomAccessFiles.get(slot).write(c);
+			return 1;
+		} catch (Exception e) {
+			return 0;
+		}
+	}
+
+	private int rxCloseFile() {
+		try {
+			int slot = data.pop();
+			try {
+				randomAccessFiles.get(slot).close();
+				return 0;
+			} finally {
+				randomAccessFiles.remove(slot);
+				files.remove(slot);
+			}
+		} catch (Exception e) {
+			throw new RuntimeException(e);
+		}
+	}
+
+	private int rxGetFilePosition() {
+		int slot = data.pop();
+		try {
+			return (int) randomAccessFiles.get(slot).getFilePointer();
+		} catch (Exception e) {
+			return -1;
+		}
+	}
+
+	private int rxSetFilePosition() {
+		int slot = data.pop();
+		int pos = data.pop();
+		try {
+			randomAccessFiles.get(slot).seek(pos);
+			return 0;
+		} catch (Exception e) {
+			return -1;
+		}
+	}
+
+	private int rxGetFileSize() {
+		int slot = data.pop();
+		try {
+			return (int) randomAccessFiles.get(slot).length();
+		} catch (Exception e) {
+			return -1;
+		}
+	}
+
+	private int rxDeleteFile() {
+		String filename = rxGetString();
+		File f = new File(filename);
+		if (f.delete()) {
+			return -1;
+		} else {
+			return 0;
+		}
+	}
+
+	private String rxGetString() {
+		int name = data.pop();
+		StringBuffer buf = new StringBuffer();
+		int i = 0;
+		boolean done = false;
+		while (!done) {
+			int j = memory.get(name + i);
+			if (j == 0) {
+				done = true;
+			} else {
+				buf.append((char) j);
+				i++;
+			}
+		}
+		return buf.toString();
+	}
+
 	public void handleDevices() {
 
 		if (ports.get(0) == 1) {
@@ -147,49 +329,63 @@ public class NGaroVM {
 		switch (ports.get(4)) {
 
 		case 0: {
+			ports.set(4, 0);
 			break;
 		}
 
 		case 1: {
 			saveImage("retroImage");
 			ports.set(0, 1);
+			ports.set(4, 0);
 			break;
 		}
 
 		case 2: {
-			int name = data.pop();
-			StringBuffer buf = new StringBuffer();
-			int i = 0;
-			boolean done = false;
-			while (!done) {
-				int j = memory.get(name + i);
-				if (j == 0) {
-					done = true;
-				} else {
-					buf.append((char) j);
-					i++;
-				}
-			}
 			try {
-				im.pushInputName(buf.toString());
+				im.pushInputName(rxGetString());
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
+			ports.set(4, 0);
 			break;
 		}
 
-		case -1:
-		case -2:
-		case -3:
-		case -4:
-		case -5:
-		case -6:
-		case -7:
-		case -8:
-		default:
-		}
+		case -1: // open a file
+			ports.set(4, rxOpenFile());
+			break;
 
-		ports.set(4, 0);
+		case -2: // read a byte from a file
+			ports.set(4, rxReadFile());
+			break;
+
+		case -3: // write a byte to a file
+			ports.set(4, rxWriteFile());
+			break;
+
+		case -4: // close a file
+			ports.set(4, rxCloseFile());
+			break;
+
+		case -5: // return current location in file
+			ports.set(4, rxGetFilePosition());
+			break;
+
+		case -6: // seek a new location in a file
+			ports.set(4, rxSetFilePosition());
+			break;
+
+		case -7: // return the size of a file
+			ports.set(4, rxGetFileSize());
+			break;
+
+		case -8: // delete a file
+			ports.set(4, rxDeleteFile());
+			break;
+
+		default:
+			ports.set(4, 0);
+
+		}
 
 		switch (ports.get(5)) {
 
@@ -476,7 +672,8 @@ public class NGaroVM {
 
 	public static void main(String[] args) throws Exception {
 		System.setErr(System.out);
-		for (String f : new String[] { "base.rx", "core.rx", "vocabs.rx" }) {
+		// for (String f : new String[] { "base.rx", "core.rx", "vocabs.rx" }) {
+		for (String f : new String[] { "files.rx" }) {
 			IOManager im = new InputManager();
 			im.pushInputName("test/" + f);
 			NGaroVM vm = new NGaroVM(128, 1024, new Memory(1000000), im);
