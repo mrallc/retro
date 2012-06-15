@@ -1,4 +1,12 @@
 #!/bin/sh
+#
+# creates a runnable jar "retro.jar", run like this:
+#
+# java -jar retro.jar
+#
+# and currently it will run all tests successfully (run from
+# top-level project directory)
+#
 mkdir -p javabuild
 cd java
 find . -name "*.java" > javasrc.txt

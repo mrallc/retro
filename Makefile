@@ -40,6 +40,7 @@ clean:
 	rm -f retroImage16 retroImage64
 	rm -f retroImage16BE retroImageBE retroImage64BE
 	rm -f *~
+	rm -f retro.jar
 
 cleaner:
 	rm -f `find . | grep \~`
