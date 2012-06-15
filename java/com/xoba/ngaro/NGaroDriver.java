@@ -1,6 +1,7 @@
 package com.xoba.ngaro;
 
 import java.io.File;
+import java.io.IOException;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
@@ -17,7 +18,7 @@ public class NGaroDriver {
 
 	public static void main(String[] args) throws Exception {
 		if (false) {
-			IMemory mem = NGaroVM.initializeMemory(new File("retroImage"), true, 1000000);
+			IMemory mem = createMemory();
 			IReplIOManager rm = new ReplIOManager();
 			IOManager im = new InputManager();
 			NGaroVM vm = new NGaroVM(128, 1024, mem, im, rm, SIC);
@@ -32,11 +33,15 @@ public class NGaroDriver {
 			IReplIOManager rm = new ReplIOManager();
 			rm.includeFile("test/" + f);
 			IOManager im = new InputManager();
-			IMemory mem = NGaroVM.initializeMemory(new File("retroImage"), true, 1000000);
+			IMemory mem = createMemory();
 			NGaroVM vm = new NGaroVM(128, 1024, mem, im, rm, SIC);
 			vm.run();
 			System.out.println("********************************************************* DONE");
 		}
+	}
+
+	private static IMemory createMemory() throws IOException {
+		return NGaroVM.initializeMemory(new File("retroImage"), true, 1000000);
 	}
 
 	public static class DatestampedImageController implements ISaveImageController {
