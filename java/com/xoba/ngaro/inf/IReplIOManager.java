@@ -4,7 +4,7 @@ import java.io.IOException;
 
 public interface IReplIOManager {
 
-	public void pushInputName(String name);
+	public void includeFile(String name);
 
 	/**
 	 * same semantics as java.io.Inputstream.read()

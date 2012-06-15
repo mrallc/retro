@@ -16,7 +16,7 @@ public class ReplIOManager implements IReplIOManager {
 	}
 
 	@Override
-	public void pushInputName(String name) {
+	public void includeFile(String name) {
 		try {
 			stack.push(new FileInputStream(new File(name)));
 		} catch (IOException e) {

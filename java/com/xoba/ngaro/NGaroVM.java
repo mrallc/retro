@@ -181,7 +181,7 @@ public class NGaroVM {
 
 		case 2: {
 			try {
-				rm.pushInputName(rxGetString());
+				rm.includeFile(rxGetString());
 			} catch (Exception e) {
 				throw new RuntimeException(e);
 			}
@@ -531,7 +531,7 @@ public class NGaroVM {
 		System.setErr(System.out);
 		for (String f : new String[] { "files.rx", "base.rx", "core.rx", "vocabs.rx" }) {
 			IReplIOManager rm = new ReplIOManager();
-			rm.pushInputName("test/" + f);
+			rm.includeFile("test/" + f);
 
 			IOManager im = new InputManager();
 			NGaroVM vm = new NGaroVM(128, 1024, new Memory(1000000), im, rm);
