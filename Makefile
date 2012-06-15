@@ -18,9 +18,6 @@ ruby:
 sbcl:
 	( cd vm/complete/lisp && sbcl --no-sysinit --no-userinit --noprint --load sbcl.lisp )
 
-java: compilejava.sh java/*
-	./compilejava.sh
-
 .PHONY: image
 
 image: retro
