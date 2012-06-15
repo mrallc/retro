@@ -16,7 +16,7 @@ public class InputManager implements IOManager {
 	private int findOpenSlot() {
 		Random random = new Random();
 		while (true) {
-			int n = 1 + random.nextInt(100000);
+			int n = 1 + random.nextInt(Integer.MAX_VALUE - 10);
 			if (!randomAccessFiles.containsKey(n)) {
 				return n;
 			}
