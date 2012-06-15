@@ -2,19 +2,22 @@ package com.xoba.ngaro.inf;
 
 public interface IOManager {
 
+	/**
+	 * returns an opaque handle for the file
+	 */
 	public int rxOpenFile(int mode, String name);
 
-	public int rxReadFile(int slot);
+	public int rxReadFile(int handle);
 
-	public int rxWriteFile(int slot, int c);
+	public int rxWriteFile(int handle, int c);
 
-	public int rxCloseFile(int slot);
+	public int rxCloseFile(int handle);
 
-	public int rxGetFilePosition(int slot);
+	public int rxGetFilePosition(int handle);
 
-	public int rxSetFilePosition(int slot, int pos);
+	public int rxSetFilePosition(int handle, int pos);
 
-	public int rxGetFileSize(int slot);
+	public int rxGetFileSize(int handle);
 
 	public int rxDeleteFile(String name);
 

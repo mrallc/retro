@@ -1,5 +1,8 @@
 package com.xoba.ngaro;
 
+import java.io.File;
+import java.io.IOException;
+import java.io.RandomAccessFile;
 import java.util.Arrays;
 
 import com.xoba.ngaro.inf.IMemory;
@@ -8,6 +11,21 @@ public class Memory implements IMemory {
 
 	private final int n;
 	private final int[] memory;
+
+	public static IMemory load(File f, boolean littleEndian) throws IOException {
+		RandomAccessFile in = new RandomAccessFile(f, "r");
+		try {
+			int n = (int) (in.length() / 4);
+			IMemory mem = new Memory(n);
+			for (int i = 0; i < n; i++) {
+				int v = in.readInt();
+				mem.set(i, littleEndian ? Memory.switchEndian(v) : v);
+			}
+			return mem;
+		} finally {
+			in.close();
+		}
+	}
 
 	public Memory(int n) {
 		this.n = n;
@@ -59,4 +77,13 @@ public class Memory implements IMemory {
 	public int hashCode() {
 		return Arrays.hashCode(memory);
 	}
+
+	public static int switchEndian(int value) {
+		int b1 = value & 0xff;
+		int b2 = (value >> 8) & 0xff;
+		int b3 = (value >> 16) & 0xff;
+		int b4 = (value >> 24) & 0xff;
+		return b1 << 24 | b2 << 16 | b3 << 8 | b4;
+	}
+
 }

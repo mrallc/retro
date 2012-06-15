@@ -21,13 +21,20 @@ public class NGaroVM {
 	private final IOManager im;
 	private final IReplIOManager rm;
 
-	public NGaroVM(int dataStackSize, int addressStackSize, IMemory m, IOManager im, IReplIOManager rm)
-			throws IOException {
+	public static interface ISaveImageController {
+		public File getSavedImageFile();
+	}
+
+	private final ISaveImageController sic;
+
+	public NGaroVM(int dataStackSize, int addressStackSize, IMemory m, IOManager im, IReplIOManager rm,
+			ISaveImageController sic) throws IOException {
 		this.data = new Stack(dataStackSize);
 		this.address = new Stack(addressStackSize);
 		this.memory = m;
 		this.im = im;
 		this.rm = rm;
+		this.sic = sic;
 	}
 
 	public static final int VM_NOP = 0;
@@ -62,61 +69,18 @@ public class NGaroVM {
 	public static final int VM_OUT = 29;
 	public static final int VM_WAIT = 30;
 
-	/**
-	 * Returns the value in the opposite endian
-	 * 
-	 * @return int
-	 */
-	public int switchEndian(int value) {
-		int b1 = value & 0xff;
-		int b2 = (value >> 8) & 0xff;
-		int b3 = (value >> 16) & 0xff;
-		int b4 = (value >> 24) & 0xff;
-		return b1 << 24 | b2 << 16 | b3 << 8 | b4;
-	}
-
-	public void loadImage(String name) {
-		memory.set(0, 0);
-		File f = new File(name);
-		if (f.exists()) {
-			try {
-				RandomAccessFile in = new RandomAccessFile(f, "r");
-				long n = in.length() / 4;
-				try {
-					for (int i = 0; i < n; i++) {
-						memory.set(i, switchEndian(in.readInt()));
-					}
-				} finally {
-					in.close();
-				}
-			} catch (Exception e) {
-				e.printStackTrace();
-			}
-		}
-	}
-
-	public void saveImage(String name) {
+	private void saveImage(File f) {
 		try {
-			RandomAccessFile out = new RandomAccessFile(name, "rw");
+			RandomAccessFile out = new RandomAccessFile(f, "rw");
 			try {
 				for (int i = 0; i < memory.size(); i++) {
-					out.writeInt(switchEndian(memory.get(i)));
+					out.writeInt(Memory.switchEndian(memory.get(i)));
 				}
 			} finally {
 				out.close();
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
-	}
-
-	public void initialize() {
-		memory.clear();
-		ports.clear();
-		loadImage("retroImage");
-		if (memory.get(0) == 0) {
-			System.out.println("Could not find image file!");
-			System.exit(-1);
 		}
 	}
 
@@ -137,7 +101,7 @@ public class NGaroVM {
 		return buf.toString();
 	}
 
-	public void handleDevices() {
+	private void handleDevices() {
 
 		if (ports.get(0) == 1) {
 			return;
@@ -173,7 +137,7 @@ public class NGaroVM {
 		}
 
 		case 1: {
-			saveImage("retroImage");
+			saveImage(sic.getSavedImageFile());
 			ports.set(0, 1);
 			ports.set(4, 0);
 			break;
@@ -297,7 +261,7 @@ public class NGaroVM {
 	/**
 	 * Process a single opcode
 	 */
-	public void process() {
+	private void process() {
 
 		switch (memory.get(ip)) {
 
@@ -527,27 +491,18 @@ public class NGaroVM {
 		}
 	}
 
-	private static void runTests() throws Exception {
-		for (String f : new String[] { "files.rx", "base.rx", "core.rx", "vocabs.rx" }) {
-			IReplIOManager rm = new ReplIOManager();
-			rm.includeFile("test/" + f);
-			IOManager im = new InputManager();
-			NGaroVM vm = new NGaroVM(128, 1024, new Memory(1000000), im, rm);
-			vm.initialize();
-			vm.run();
-			System.out.println("********************************************************* DONE");
+	private static void copy(IMemory source, IMemory target, int p) {
+		for (int i = 0; i < source.size(); i++) {
+			target.set(p + i, source.get(i));
 		}
 	}
 
-	public static void main(String[] args) throws Exception {
-		if (true) {
-			IReplIOManager rm = new ReplIOManager();
-			IOManager im = new InputManager();
-			NGaroVM vm = new NGaroVM(128, 1024, new Memory(1000000), im, rm);
-			vm.initialize();
-			vm.run();
-		} else {
-			runTests();
-		}
+	public static IMemory initializeMemory(File imageFile, boolean littleEndian, int totalMemorySize)
+			throws IOException {
+		IMemory mem = new Memory(totalMemorySize);
+		IMemory image = Memory.load(imageFile, true);
+		copy(image, mem, 0);
+		return mem;
 	}
+
 }
